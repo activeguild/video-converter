@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: video-converter
+    env: python
+    region: oregon
+    buildCommand: |
+      apt-get update && apt-get install -y ffmpeg
+      pip install -r requirements.txt
+    startCommand: python app.py
+    plan: free
