@@ -4,9 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FFmpeg Video Processing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form, pre, video, a {
+            margin-bottom: 20px;
+        }
+        #downloadButton {
+            display: none;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #downloadButton:hover {
+            background-color: #45a049;
+        }
+    </style>
 </head>
 <body>
-    <h1>Upload a Video File for Processing</h1>
+    <h1>Video Processing with FFmpeg</h1>
+    <a id="downloadButton" href="#">Download Processed Video</a>
+    <h2>Upload a Video File</h2>
     <form id="uploadForm" enctype="multipart/form-data">
         <label for="file">Choose a video file:</label>
         <input type="file" id="file" name="file" accept="video/*" required>
@@ -14,39 +41,47 @@
     </form>
     <h2>Processing Log</h2>
     <pre id="logOutput">Waiting for upload...</pre>
-    <h2>Processed Video</h2>
-    <video id="processedVideo" controls style="display: none;"></video>
+    <!-- <h2>Processed Video</h2> -->
+    <!-- <video id="processedVideo" controls style="display: none; max-width: 100%;"></video> -->
 
     <script>
         const form = document.getElementById('uploadForm');
         const logOutput = document.getElementById('logOutput');
         const processedVideo = document.getElementById('processedVideo');
+        const downloadButton = document.getElementById('downloadButton');
 
         form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const formData = new FormData(form);
-            
-            logOutput.textContent = "Processing...";
-            processedVideo.style.display = "none";
-            
-            try {
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-                
-                if (response.ok) {
-                    logOutput.textContent = result.log;
-                    processedVideo.src = `/download/${result.output_file}`;
-                    processedVideo.style.display = "block";
-                } else {
-                    logOutput.textContent = `Error: ${result.error}`;
-                }
-            } catch (error) {
-                logOutput.textContent = `Unexpected error: ${error.message}`;
-            }
+    event.preventDefault();
+    const formData = new FormData(form);
+
+    logOutput.textContent = "Processing...";
+    // processedVideo.style.display = "none";
+    downloadButton.style.display = "none";
+
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
         });
+        const result = await response.json();
+
+        if (response.ok) {
+            logOutput.textContent = `FFmpeg Log:\n${result.ffmpeg_log}\n\nFFprobe Log:\n${result.ffprobe_log}`;
+            const outputFileName = result.output_file;
+            const downloadUrl = `/download/${outputFileName}`;
+            // processedVideo.src = downloadUrl;
+            // processedVideo.style.display = "block";
+
+            // ダウンロードボタンを表示
+            downloadButton.href = downloadUrl;
+            downloadButton.style.display = "inline-block";
+        } else {
+            logOutput.textContent = `Error: ${result.error}`;
+        }
+    } catch (error) {
+        logOutput.textContent = `Unexpected error: ${error.message}`;
+    }
+});
     </script>
 </body>
 </html>

@@ -24,14 +24,22 @@ def upload_video():
 
     filename = secure_filename(file.filename)
     input_path = os.path.join(UPLOAD_FOLDER, filename)
-    output_path = os.path.join(OUTPUT_FOLDER, f"processed_{filename}")
+    output_path = os.path.join(OUTPUT_FOLDER, f"processed_{os.path.splitext(filename)[0]}.mp4")
     file.save(input_path)
 
-    # FFmpegコマンドを実行してログを収集
+    # FFmpegコマンドを実行して変換ログを収集
     ffmpeg_log = []
     try:
+        # H.264 (avc1) Mainプロファイル変換 + 比率維持で1400x1400以内に収める
         result = subprocess.run(
-            ["ffmpeg", "-i", input_path, "-vf", "scale=1280:720", output_path],
+            [
+                "ffmpeg", "-i", input_path,
+                "-vf", "scale='min(1400,iw):min(1400,ih)':force_original_aspect_ratio=decrease",
+                "-c:v", "libx264", "-profile:v", "main", "-preset", "fast",
+                "-movflags", "+faststart",  # シーク対応
+                "-c:a", "aac", "-b:a", "128k",  # AAC音声コーデック
+                output_path
+            ],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
             text=True
@@ -40,8 +48,28 @@ def upload_video():
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"FFmpeg processing failed: {e}"}), 500
 
+    # ffprobeコマンドを実行して変換後の動画情報を取得
+    ffprobe_log = []
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "error",
+                "-show_format", "-show_streams",
+                "-print_format", "json",
+                output_path
+            ],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True
+        )
+        ffprobe_log = result.stdout
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"FFprobe failed: {e}"}), 500
+
+    # 変換ログとffprobe結果を返す
     return jsonify({
-        "log": ffmpeg_log,
+        "ffmpeg_log": ffmpeg_log,
+        "ffprobe_log": ffprobe_log,
         "output_file": os.path.basename(output_path)
     })
 
@@ -51,7 +79,10 @@ def download_video(filename):
     if not os.path.exists(filepath):
         return jsonify({"error": "File not found"}), 404
 
-    return send_file(filepath, as_attachment=False)
+    # ファイル送信後に削除
+    response = send_file(filepath, as_attachment=True)
+    os.remove(filepath)
+    return response
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
