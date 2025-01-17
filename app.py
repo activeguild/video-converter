@@ -30,14 +30,15 @@ def upload_video():
     # FFmpegコマンドを実行して変換ログを収集
     ffmpeg_log = []
     try:
-        # H.264 (avc1) Mainプロファイル変換 + 比率維持で1400x1400以内に収める
+        # Mainプロファイルでピクセルフォーマットを4:2:0に変換
         result = subprocess.run(
             [
                 "ffmpeg", "-i", input_path,
                 "-vf", "scale='min(1400,iw):min(1400,ih)':force_original_aspect_ratio=decrease",
                 "-c:v", "libx264", "-profile:v", "main", "-preset", "fast",
+                "-crf", "23", "-pix_fmt", "yuv420p",  # クロマサブサンプリングを4:2:0に設定
                 "-movflags", "+faststart",  # シーク対応
-                "-c:a", "aac", "-b:a", "128k",  # AAC音声コーデック
+                # "-c:a", "aac", "-b:a", "128k",  # AAC音声コーデック
                 output_path
             ],
             stderr=subprocess.PIPE,
@@ -48,7 +49,6 @@ def upload_video():
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"FFmpeg processing failed: {e}"}), 500
     finally:
-        # 変換元のファイルを削除
         if os.path.exists(input_path):
             os.remove(input_path)
 
