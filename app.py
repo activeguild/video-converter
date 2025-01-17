@@ -47,6 +47,10 @@ def upload_video():
         ffmpeg_log = result.stderr
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"FFmpeg processing failed: {e}"}), 500
+    finally:
+        # 変換元のファイルを削除
+        if os.path.exists(input_path):
+            os.remove(input_path)
 
     # ffprobeコマンドを実行して変換後の動画情報を取得
     ffprobe_log = []
@@ -83,6 +87,7 @@ def download_video(filename):
     response = send_file(filepath, as_attachment=True)
     os.remove(filepath)
     return response
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
