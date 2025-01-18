@@ -38,7 +38,7 @@ def upload_video():
                 "-c:v", "libx264", "-profile:v", "main", "-preset", "fast",
                 "-crf", "23", "-pix_fmt", "yuv420p",  # クロマサブサンプリングを4:2:0に設定
                 "-movflags", "+faststart",  # シーク対応
-                # "-c:a", "aac", "-b:a", "128k",  # AAC音声コーデック
+                "-c:a", "aac", "-b:a", "128k",  # AAC音声コーデック
                 output_path
             ],
             stderr=subprocess.PIPE,
